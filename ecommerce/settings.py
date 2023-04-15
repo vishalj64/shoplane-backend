@@ -77,17 +77,7 @@ WSGI_APPLICATION = 'ecommerce.wsgi.application'
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'djongo',
-        'NAME': 'shoplane_db_2',
-        'HOST': '127.0.0.1',
-        'PORT': '27017',
-        'USERNAME': 'user',
-        'PASSWORD': 'password',
-        'AUTH_SOURCE': 'admin',  # This is the default, change it if your database has a different auth source
-        'AUTH_MECHANISM': 'SCRAM-SHA-1',  #
-
-    }
+    
 }
 
 
