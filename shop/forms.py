@@ -12,12 +12,3 @@ class ReviewForm(forms.ModelForm):
         model = models.Review
 
 
-class SigninForm(forms.Form):
-    username = forms.CharField()
-    password = forms.CharField(widget=forms.PasswordInput)
-
-
-class SignupForm(UserCreationForm):
-    class Meta:
-        model = User
-        fields = ["username", "email", "password1", "password2"]
