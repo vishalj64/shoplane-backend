@@ -1,11 +1,7 @@
-
 from django.urls import path
-
-from shop import views
-
-app_name = "shop"
+from shop.views import HomeView, ApiProductsView
 
 urlpatterns = [
-    path('', views.home, name="home"),
-    path('api/products/', views.api_products, name="api_products"),
+    path('', HomeView.as_view(), name='home'),
+    path('api/products/', ApiProductsView.as_view(), name='api_products'),
 ]
