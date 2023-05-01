@@ -1,46 +1,43 @@
-from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
-from django.db.models import Q
-from django.shortcuts import render, redirect
-
-# Create your views here.
-from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 
-from shop.forms import ReviewForm, SignupForm, SigninForm
-from shop.models import Product, Category
-from shop.serializer import ProductSerializer
+class HomeView(APIView):
+    def get(self, request):
+        products = Product.objects.filter(active=True)
+        categories = Category.objects.filter(active=True)
+        serializer = ProductSerializer(products, many=True)
+        data = {
+            "products": serializer.data,
+            "categories": [cat.name for cat in categories]
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
+class SearchView(APIView):
+    def get(self, request):
+        q = request.GET["q"]
+        products = Product.objects.filter(active=True, name__icontains=q)
+        serializer = ProductSerializer(products, many=True)
+        data = {"products": serializer.data}
+        return Response(data, status=status.HTTP_200_OK)
 
-def home(request):
-    products = Product.objects.filter(active=True)
-    categories = Category.objects.filter(active=True)
-    context = {"products": products, "categories": categories}
-    return render(request, "shop/home.html", context)
+class CategoriesView(APIView):
+    def get(self, request, slug):
+        cat = Category.objects.get(slug=slug)
+        products = Product.objects.filter(active=True, category=cat)
+        serializer = ProductSerializer(products, many=True)
+        data = {"products": serializer.data}
+        return Response(data, status=status.HTTP_200_OK)
 
+class DetailView(APIView):
+    def get(self, request, slug):
+        product = Product.objects.get(active=True, slug=slug)
+        serializer = ProductSerializer(product)
+        data = {"product": serializer.data}
+        return Response(data, status=status.HTTP_200_OK)
 
-def search(request):
-    q = request.GET["q"]
-    products = Product.objects.filter(active=True, name__icontains=q)
-    categories = Category.objects.filter(active=True)
-    context = {"products": products,
-               "categories": categories,
-               "title": q + " - search"}
-    return render(request, "shop/list.html", context)
-
-
-def categories(request, slug):
-    cat = Category.objects.get(slug=slug)
-    products = Product.objects.filter(active=True, category=cat)
-    categories = Category.objects.filter(active=True)
-    context = {"products":products, "categories":categories, "title":cat.name + " - Categories"}
-    return render(request, "shop/list.html", context)
-
-
-def detail(request, slug):
-    product = Product.objects.get(active=True, slug=slug)
-    if request.method == "POST":
+    def post(self, request, slug):
+        product = Product.objects.get(active=True, slug=slug)
         form = ReviewForm(request.POST)
         if form.is_valid():
             review = form.save(commit=False)
@@ -48,99 +45,73 @@ def detail(request, slug):
             review.user = request.user
             review.save()
             messages.success(request, "Review saved")
+            return Response(status=status.HTTP_201_CREATED)
         else:
-            messages.error(request, "Invalid form")
-    else:
-        form = ReviewForm()
+            return Response(form.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class CartView(APIView):
+    def get(self, request, slug):
+        product = Product.objects.get(slug=slug)
+        inital = {"items":[],"price":0.0,"count":0}
+        session = request.session.get("data", inital)
+        if slug in session["items"]:
+            return Response({"error": "Already added to cart"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            session["items"].append(slug)
+            session["price"] += float(product.price)
+            session["count"] += 1
+            request.session["data"] = session
+            return Response({"success": "Added successfully"}, status=status.HTTP_200_OK)
 
-    categories = Category.objects.filter(active=True)
-    context = {"product" : product,
-               "categories":categories,
-               "form": form}
-    return render(request, "shop/detail.html", context)
+class MyCartView(APIView):
+    def get(self, request):
+        sess = request.session.get("data", {"items":[]})
+        products = Product.objects.filter(active=True, slug__in=sess["items"])
+        serializer = ProductSerializer(products, many=True)
+        data = {"products": serializer.data}
+        return Response(data, status=status.HTTP_200_OK)
 
+class CheckoutView(APIView):
+    def get(self, request):
+        request.session.pop('data', None)
+        return Response(status=status.HTTP_200_OK)
 
-def signup(request):
-    if request.method == "POST":
+class ApiProductsView(APIView):
+    def get(self, request):
+        query = request.GET.get("q", "")
+        products = Product.objects.filter(Q(name__contains=query) | Q(description__contains=query))
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class SignupView(View):
+    def post(self, request):
         form = SignupForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.save()
             messages.success(request, "User saved")
-            return redirect("shop:signin")
+            return JsonResponse({"message": "User saved"})
         else:
             messages.error(request, "Error in form")
-    else:
-        form = SignupForm()
-    context = {"form": form}
-    return render(request, "shop/signup.html", context)
+            return JsonResponse({"error": "Error in form"})
 
 
-def signin(request):
-    if request.method=="POST":
+class SigninView(View):
+    def post(self, request):
         form = SigninForm(request.POST)
-        # username = req.POST["username"]
-        # password = req.POST["password"]
         username = form["username"].value()
         password = form["password"].value()
-        user = authenticate(request, username=username,  password=password)
+        user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
             messages.success(request, "Successfully logged in")
-            return redirect("shop:home")
+            return JsonResponse({"message": "Successfully logged in"})
         else:
             messages.error(request, "Invalid Username or Password")
-    else:
-        form = SigninForm()
-    context = {"form": form}
-    return render(request, "shop/signin.html", context)
+            return JsonResponse({"error": "Invalid Username or Password"})
 
 
-def signout(request):
-    logout(request)
-    return redirect("shop:signin")
-
-
-def cart(request, slug):
-    """
-        data = {"items" : ["slug1", "slug2"],
-                "price" : 12342,
-                "count" : 5
-                }
-        request.session["data"] = data
-        """
-    product = Product.objects.get(slug=slug)
-    inital = {"items":[],"price":0.0,"count":0}
-    session = request.session.get("data", inital)
-    if slug in session["items"]:
-        messages.error(request, "Already added to cart")
-    else:
-        session["items"].append(slug)
-        session["price"] += float(product.price)
-        session["count"] += 1
-        request.session["data"] = session
-        messages.success(request, "Added successfully")
-    return redirect("shop:detail", slug)
-
-
-def mycart(request):
-    sess = request.session.get("data", {"items":[]})
-    products = Product.objects.filter(active=True, slug__in=sess["items"])
-    categories = Category.objects.filter(active=True)
-    context = {"products": products,
-               "categories": categories,
-               "title": "My Cart"}
-    return render(request, "shop/list.html", context)
-
-
-def checkout(request):
-    request.session.pop('data', None)
-    return redirect("/")
-
-@api_view(['GET'])
-def api_products(request):
-    query = request.GET.get("q", "")
-    products = Product.objects.filter(Q(name__contains=query) | Q(description__contains=query))
-    serializer = ProductSerializer(products, many=True)
-    return Response(serializer.data)
+class SignoutView(View):
+    def get(self, request):
+        logout(request)
+        return JsonResponse({"message": "Successfully logged out"})
