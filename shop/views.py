@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+users = []
+
 class HomeView(APIView):
     def get(self, request):
         products = Product.objects.filter(active=True)
@@ -83,35 +85,50 @@ class ApiProductsView(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class SignupView(View):
+class SignUpView(View):
     def post(self, request):
-        form = SignupForm(request.POST)
-        if form.is_valid():
-            user = form.save(commit=False)
-            user.save()
-            messages.success(request, "User saved")
-            return JsonResponse({"message": "User saved"})
-        else:
-            messages.error(request, "Error in form")
-            return JsonResponse({"error": "Error in form"})
+        data = json.loads(request.body)
+        first_name = data['first_name']
+        last_name = data['last_name']
+        username = data['username']
+        email = data['email']
+        mobile_number = data['mobile_number']
+        password = data['password']
 
+        # Create a new user and add it to the local array
+        user = User(
+            first_name=first_name,
+            last_name=last_name,
+            username=username,
+            email=email,
+            mobile_number=mobile_number,
+            password=password
+        )
+        users.append(user)
 
-class SigninView(View):
+        return JsonResponse({'message': 'User signed up successfully'})
+    
+class SignInView(View):
     def post(self, request):
-        form = SigninForm(request.POST)
-        username = form["username"].value()
-        password = form["password"].value()
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            messages.success(request, "Successfully logged in")
-            return JsonResponse({"message": "Successfully logged in"})
+        data = json.loads(request.body)
+        username = data['username']
+        password = data['password']
+
+        # Verify the user credentials in the local array
+        user_found = False
+        for user in users:
+            if user.username == username and user.password == password:
+                user_found = True
+                break
+
+        if user_found:
+            return JsonResponse({'message': 'User signed in successfully'})
         else:
-            messages.error(request, "Invalid Username or Password")
-            return JsonResponse({"error": "Invalid Username or Password"})
+            return JsonResponse({'message': 'Invalid credentials'}, status=401)
 
+class SignOutView(View):
+    def post(self, request):
+        # Clear user session or perform additional tasks
+        # Your implementation here
 
-class SignoutView(View):
-    def get(self, request):
-        logout(request)
-        return JsonResponse({"message": "Successfully logged out"})
+        return JsonResponse({'message': 'User signed out successfully'})
