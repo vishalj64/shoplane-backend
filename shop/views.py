@@ -2,6 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+users = []
+
 class HomeView(APIView):
     def get(self, request):
         products = Product.objects.filter(active=True)
