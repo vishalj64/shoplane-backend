@@ -53,3 +53,40 @@ class ReviewView(View):
         )
         review.save()
         return JsonResponse({'message': 'Review created successfully'})
+
+class OrderItemsView(View):
+    def get(self, request, order_id):
+        order_items = OrderItem.objects.filter(order_id=order_id)
+        order_item_list = []
+
+        for order_item in order_items:
+            order_item_data = {
+                'id': order_item.id,
+                'order_id': order_item.order_id,
+                'product_id': order_item.product_id,
+                'quantity': order_item.quantity,
+                'price': order_item.price,
+                # Add other fields as needed
+            }
+            order_item_list.append(order_item_data)
+
+        return JsonResponse(order_item_list, safe=False)
+
+class ReviewsByProductView(View):
+    def get(self, request, product_id):
+        reviews = Review.objects.filter(product_id=product_id)
+        review_list = []
+
+        for review in reviews:
+            review_data = {
+                'id': review.id,
+                'product_id': review.product_id,
+                'user_id': review.user_id,
+                'rate': review.rate,
+                'review': review.review,
+                'created': review.created,
+                'active': review.active
+            }
+            review_list.append(review_data)
+
+        return JsonResponse(review_list, safe=False)
