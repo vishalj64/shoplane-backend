@@ -1,6 +1,8 @@
 from django.http import JsonResponse
 from django.views import View
 from .models import Category, Product, Review
+from django.core.paginator import Paginator
+from django.db.models import Q
 
 class CategoryView(View):
     def get(self, request):
@@ -90,3 +92,59 @@ class ReviewsByProductView(View):
             review_list.append(review_data)
 
         return JsonResponse(review_list, safe=False)
+
+
+class ProductSearchAPI(View):
+    def get(self, request):
+        keyword = request.GET.get('keyword')
+        products = Product.objects.filter(name__icontains=keyword)
+        product_list = [product.name for product in products]
+        return JsonResponse({'products': product_list})
+
+class ProductFilterAPI(View):
+    def get(self, request):
+        category = request.GET.get('category')
+        brand = request.GET.get('brand')
+        price_min = request.GET.get('price_min')
+        price_max = request.GET.get('price_max')
+
+        products = Product.objects.filter(
+            category__name=category,
+            brand__icontains=brand,
+            price__range=(price_min, price_max)
+        )
+
+        product_list = [product.name for product in products]
+        return JsonResponse({'products': product_list})
+
+
+class AllProductsAPI(View):
+    def get(self, request):
+        products = Product.objects.all()
+        paginator = Paginator(products, 5)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        product_list = [product.name for product in page_obj]
+        next_page = page_obj.next_page_number() if page_obj.has_next() else None
+        prev_page = page_obj.previous_page_number() if page_obj.has_previous() else None
+        return JsonResponse({
+            'products': product_list,
+            'next_page': next_page,
+            'prev_page': prev_page
+        })
+
+class ProductSearchPaginationAPI(View):
+    def get(self, request):
+        keyword = request.GET.get('keyword')
+        products = Product.objects.filter(name__icontains=keyword)
+        paginator = Paginator(products, 5)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        product_list = [product.name for product in page_obj]
+        next_page = page_obj.next_page_number() if page_obj.has_next() else None
+        prev_page = page_obj.previous_page_number() if page_obj.has_previous() else None
+        return JsonResponse({
+            'products': product_list,
+            'next_page': next_page,
+            'prev_page': prev_page
+        })
