@@ -148,3 +148,73 @@ class ProductSearchPaginationAPI(View):
             'next_page': next_page,
             'prev_page': prev_page
         })
+        
+# Module 40 APIs-------------->
+
+class PriceRangeSearchAPI(View):
+    def get(self, request):
+        min_price = request.GET.get('min_price')
+        max_price = request.GET.get('max_price')
+
+        products = Product.objects.filter(price__gte=min_price, price__lte=max_price)
+        data = [{'name': product.name, 'price': product.price} for product in products]
+
+        return JsonResponse({'products': data})
+
+class ProductFilterAPI(View):
+    def get(self, request):
+        category = request.GET.get('category')
+        brand = request.GET.get('brand')
+        availability = request.GET.get('availability')
+
+        products = Product.objects.filter(
+            Q(category__name=category) & Q(brand=brand) & Q(active=availability)
+        )
+        data = [{'name': product.name, 'brand': product.brand, 'active': product.active} for product in products]
+
+        return JsonResponse({'products': data})
+
+class ProductKeywordSearchAPI(View):
+    def get(self, request):
+        keyword = request.GET.get('keyword')
+
+        products = Product.objects.mongo_find(
+            {'$or': [
+                {'name': {'$regex': keyword, '$options': 'i'}},
+                {'description': {'$regex': keyword, '$options': 'i'}}
+            ]}
+        )
+        data = [{'name': product.name, 'description': product.description} for product in products]
+
+        return JsonResponse({'products': data})
+
+
+class ProductKeywordSearchSingleIndexAPI(View):
+    def get(self, request):
+        keyword = request.GET.get('keyword')
+
+        products = Product.objects.mongo_find(
+            {'$or': [
+                {'name': {'$regex': keyword, '$options': 'i'}},
+                {'description': {'$regex': keyword, '$options': 'i'}}
+            ]}
+        ).hint([('name', 1)])  # Utilize the created index
+
+        data = [{'name': product.name, 'description': product.description} for product in products]
+
+        return JsonResponse({'products': data})
+
+
+class ProductFilterCompoundIndexAPI(View):
+    def get(self, request):
+        category = request.GET.get('category')
+        brand = request.GET.get('brand')
+        availability = request.GET.get('availability')
+
+        products = Product.objects.filter(
+            Q(category__name=category) & Q(brand=brand) & Q(active=availability)
+        ).hint([('category', 1), ('brand', 1)])  # Utilize the compound index
+
+        data = [{'name': product.name, 'brand': product.brand, 'active': product.active} for product in products]
+
+        return JsonResponse({'products': data})
