@@ -3,6 +3,7 @@ from django.views import View
 from .models import Category, Product, Review
 from django.core.paginator import Paginator
 from django.db.models import Q
+from rest_framework_jwt.settings import api_settings
 
 class CategoryView(View):
     def get(self, request):
@@ -218,3 +219,23 @@ class ProductFilterCompoundIndexAPI(View):
         data = [{'name': product.name, 'brand': product.brand, 'active': product.active} for product in products]
 
         return JsonResponse({'products': data})
+
+
+
+class LoginAPIView(APIView):
+    def post(self, request):
+        # Perform the login logic and validate credentials
+        # Assuming you have validated the user and retrieved the user object
+        user = authenticate(username=request.data['username'], password=request.data['password'])
+        
+        if user:
+            jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+            jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+            
+            payload = jwt_payload_handler(user)
+            token = jwt_encode_handler(payload)
+            
+            return JsonResponse({'token': token})
+        else:
+            return JsonResponse({'error': 'Invalid credentials'}, status=400)
+
