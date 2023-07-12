@@ -4,7 +4,7 @@ from .models import Category, Product, Review
 from django.core.paginator import Paginator
 from django.db.models import Q
 from rest_framework_jwt.settings import api_settings
-
+from rest_framework.permissions import IsAuthenticated
 class CategoryView(View):
     def get(self, request):
         categories = Category.objects.all().values()
@@ -22,6 +22,7 @@ class CategoryView(View):
         return JsonResponse({'message': 'Category created successfully'})
 
 class ProductView(View):
+    @permission_classes([IsAuthenticated])
     def get(self, request):
         products = Product.objects.all().values()
         return JsonResponse(list(products), safe=False)
