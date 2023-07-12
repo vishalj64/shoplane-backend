@@ -2,7 +2,7 @@
 from django.urls import path
 
 from shop import views
-from .views import OrderItemsView, ReviewsByProductView
+from .views import OrderItemsView, ReviewsByProductView, LoginAPIView
 app_name = "shop"
 
 urlpatterns = [
@@ -19,5 +19,6 @@ urlpatterns = [
     path('api/products/', views.api_products, name="api_products"),
     path('order-items/<int:order_id>/', OrderItemsView.as_view(), name='order-items'),
     path('reviews/<int:product_id>/', ReviewsByProductView.as_view(), name='reviews-by-product')
-    path('api/token/', obtain_jwt_token)
+    path('api/token/', obtain_jwt_token),
+    path('api/login/', LoginAPIView.as_view())
 ]
